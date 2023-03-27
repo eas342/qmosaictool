@@ -120,7 +120,7 @@ class photObj(object):
                     allRes = {}
                     for oneKey in useKeys:
                         allRes[oneKey] = [phot_res[oneKey]]
-                    
+                    firstRow = False ## now the first row is set
                 else:
                     for oneKey in useKeys:
                         allRes[oneKey].append(phot_res[oneKey])
