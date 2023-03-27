@@ -15,6 +15,7 @@ import tqdm
 import astropy.units as u
 import crds
 import pdb
+import os
 
 defaultCoord = SkyCoord(120.0592192 * u.deg,-10.79151878 * u.deg)
 
@@ -24,7 +25,8 @@ class photObj(object):
     """
     def __init__(self,paths='*',coord=defaultCoord,
                  EECalc=0.878,descrip='test',
-                 manualPlateScale=None):
+                 manualPlateScale=None,src_radius=10,
+                 bkg_radii=[12,20]):
         """
         manualPlateScale: None or float
             If None, will look up the plate scale
@@ -35,8 +37,8 @@ class photObj(object):
         self.fileList = search_for_images(paths)
         self.centroidBox= 13
         self.coord = defaultCoord
-        self.src_radius = 10
-        self.backg_radii = [12,20]
+        self.src_radius = src_radius
+        self.backg_radii = bkg_radii
         self.ee_calc = EECalc ## Needs an update for each filter!!!
         self.descrip = descrip
         self.manualPlateScale = manualPlateScale
@@ -114,6 +116,7 @@ class photObj(object):
                     phot_res = self.do_phot(xc,yc,image_data,head,error)
 
                     phot_res['coord'] = newPos
+                    phot_res['filename'] = os.path.basename(fits_filename)
             else:
                 ## no source
                 phot_res = None
