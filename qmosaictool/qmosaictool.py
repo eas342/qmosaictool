@@ -6,7 +6,7 @@ from astropy.io import fits
 from astropy.coordinates import SkyCoord
 from astropy.wcs.utils import pixel_to_skycoord
 import astropy.units as u
-from astropy.wcs import WCS
+from astropy.wcs import WCS, FITSFixedWarning
 from astropy.table import Table
 from photutils.centroids import centroid_com, centroid_sources
 from photutils import CircularAperture, CircularAnnulus
@@ -23,7 +23,14 @@ class photObj(object):
     Do photometry on a list of images
     """
     def __init__(self,paths='*',coord=defaultCoord,
-                 EECalc=0.878,descrip='test'):
+                 EECalc=0.878,descrip='test',
+                 manualPlateScale=None):
+        """
+        manualPlateScale: None or float
+            If None, will look up the plate scale
+            If manually selected, it is the length of a pixel in 
+            milli-arcseconds
+        """
         self.path_input = paths
         self.fileList = search_for_images(paths)
         self.centroidBox= 13
@@ -32,6 +39,7 @@ class photObj(object):
         self.backg_radii = [12,20]
         self.ee_calc = EECalc ## Needs an update for each filter!!!
         self.descrip = descrip
+        self.manualPlateScale = manualPlateScale
 
     def get_centroid(self,xguess,yguess,image):
         """
@@ -64,10 +72,14 @@ class photObj(object):
 
         ## Get the pixel area
         areaFile = crds.getreferences(head,reftypes=['area'])
-        with fits.open(areaFile['area']) as HDUList:
-            avgArea = HDUList[0].header['PIXAR_SR']
-            nearbyArea = HDUList['SCI'].data[int(yc),int(xc)]
-            useArea = avgArea * nearbyArea
+        
+        if self.manualPlateScale is None:
+            with fits.open(areaFile['area']) as HDUList:
+                avgArea = HDUList[0].header['PIXAR_SR']
+                nearbyArea = HDUList['SCI'].data[int(yc),int(xc)]
+                useArea = avgArea * nearbyArea
+        else:
+            useArea = (self.manualPlateScale * 1e-3 / 206265.)**2
         
         photJy = (bkgSubPhot * useArea / self.ee_calc * u.MJy).to(u.uJy)
         photJy_err = (bkgSubPhot_err * useArea/self.ee_calc * u.MJy).to(u.uJy)
