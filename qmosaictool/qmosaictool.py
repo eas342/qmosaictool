@@ -16,6 +16,7 @@ import astropy.units as u
 import crds
 import pdb
 import os
+from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 
 defaultCoord = SkyCoord(120.0592192 * u.deg,-10.79151878 * u.deg)
 
@@ -27,7 +28,8 @@ class photObj(object):
                  EECalc=0.878,descrip='test',
                  manualPlateScale=None,src_radius=10,
                  bkg_radii=[12,20],
-                 directPaths=None,filterName=None):
+                 directPaths=None,filterName=None,
+                 interpolate=False):
         """
         manualPlateScale: None or float
             If None, will look up the plate scale
@@ -49,6 +51,7 @@ class photObj(object):
         self.descrip = descrip
         self.manualPlateScale = manualPlateScale
         self.filterName = filterName
+        self.interpolate = interpolate
 
     def get_centroid(self,xguess,yguess,image):
         """
@@ -96,12 +99,14 @@ class photObj(object):
         photRes['pxSum'] = bkgSubPhot[0]
         photRes['phot (uJy)'] = photJy[0]
         photRes['phot (uJy) err'] = photJy_err[0]
+        photRes['bkgEst'] = bkgEst[0]
         return photRes
 
 
     def process_one_file(self,fits_filename):
         with fits.open(fits_filename) as HDUList:
             image_data = HDUList['SCI'].data
+            
             error = HDUList['ERR'].data
             head = HDUList[0].header
             image_shape = image_data.shape
@@ -119,6 +124,18 @@ class photObj(object):
                 if separation > 0.8 * u.arcsec:
                     phot_res = None
                 else:
+                    
+                    if self.interpolate == True:
+                        ## interpolate where the photometry is happening
+                        kernel = Gaussian2DKernel(x_stddev=1)
+                        margin = 5
+                        x_st = np.max([int(xc - self.backg_radii[1] - margin),0])
+                        x_end = np.min([int(xc + self.backg_radii[1] + margin),image_shape[1]])
+                        y_st = np.max([int(yc - self.backg_radii[1] - margin),0])
+                        y_end = np.min([int(yc + self.backg_radii[1] + margin),image_shape[0]])
+                        cutout = image_data[y_st:y_end,x_st:x_end]
+                        fixed_image = interpolate_replace_nans(cutout, kernel)
+                        image_data[y_st:y_end,x_st:x_end] = fixed_image
                     
                     phot_res = self.do_phot(xc,yc,image_data,head,error)
 
@@ -155,13 +172,15 @@ class photObj(object):
     
 
 class manyCals(object):
-    def __init__(self,pathSearch,srcDescrip='_test'):
+    def __init__(self,pathSearch,srcDescrip='_test',
+                 interpolate=False):
         """
         object to organize and do photometry on many files
         """
         self.path_input = pathSearch
         self.fileList = search_for_images(pathSearch)
         self.srcDescrip = srcDescrip
+        self.interpolate = interpolate
 
     def gather_filters(self):
         t = Table()
@@ -197,12 +216,12 @@ class manyCals(object):
             po = photObj(directPaths=fileList,EECalc=EECalc,
                          descrip=oneDescrip,src_radius=srcap,
                          bkg_radii=[bkgStart,bkgEnd],
-                         filterName=oneFilt)
+                         filterName=oneFilt,
+                         interpolate=self.interpolate)
             po.process_all_files()
 
     def combine_phot(self):
         photFiles = np.sort(glob.glob('all_phot_*{}.ecsv'.format(self.srcDescrip)))
-        pdb.set_trace()
         
         filt_list = []
         pxSum, apPhot, apPhot_err, coordMed = [], [], [], []
