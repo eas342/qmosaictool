@@ -27,7 +27,7 @@ class photObj(object):
                  EECalc=0.878,descrip='test',
                  manualPlateScale=None,src_radius=10,
                  bkg_radii=[12,20],
-                 directPaths=None):
+                 directPaths=None,filterName=None):
         """
         manualPlateScale: None or float
             If None, will look up the plate scale
@@ -48,6 +48,7 @@ class photObj(object):
         self.ee_calc = EECalc ## Needs an update for each filter!!!
         self.descrip = descrip
         self.manualPlateScale = manualPlateScale
+        self.filterName = filterName
 
     def get_centroid(self,xguess,yguess,image):
         """
@@ -148,6 +149,8 @@ class photObj(object):
             
         for oneKey in useKeys:
             t[oneKey] = allRes[oneKey]
+        
+        t.meta['FILTER'] = str(self.filterName)
         t.write('all_phot_{}.ecsv'.format(self.descrip),overwrite=True)
     
 
@@ -193,9 +196,33 @@ class manyCals(object):
             oneDescrip = "{}{}".format(oneFilt,self.srcDescrip)
             po = photObj(directPaths=fileList,EECalc=EECalc,
                          descrip=oneDescrip,src_radius=srcap,
-                         bkg_radii=[bkgStart,bkgEnd])
+                         bkg_radii=[bkgStart,bkgEnd],
+                         filterName=oneFilt)
             po.process_all_files()
 
+    def combine_phot(self):
+        photFiles = np.sort(glob.glob('all_phot_*{}.ecsv'.format(self.srcDescrip)))
+        pdb.set_trace()
+        
+        filt_list = []
+        pxSum, apPhot, apPhot_err, coordMed = [], [], [], []
+        for oneFile in photFiles:
+            dat = ascii.read(oneFile)
+            filt = dat.meta['FILTER']
+            filt_list.append(filt)
+            pxSum.append(np.nanmedian(dat['pxSum']))
+            apPhot.append(np.nanmedian(dat['phot (uJy)']))
+            apPhot_err.append(np.nanmedian(dat['phot (uJy) err']))
+            coordMed.append(SkyCoord(np.nanmedian(dat['coord'].ra),
+                                     np.nanmedian(dat['coord'].dec)))
+        res = Table()
+        res['Filter'] = filt_list
+        res['coord'] = coordMed
+        res['pxSum'] = pxSum
+        res['phot (uJy)'] = apPhot
+        res['phot (uJy) err'] = apPhot_err
+        res['file'] = photFiles
+        res.write('combined_phot_{}.ecsv'.format(self.srcDescrip),overwrite=True)
 
 def search_for_images(paths):
     """
