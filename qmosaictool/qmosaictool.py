@@ -184,9 +184,15 @@ class manyCals(object):
             else:
                 print("No filter {} found in apcor table".format(oneFilt))
                 pdb.set_trace()
-            
+            if oneFilt in ap_px_to_use:
+                srcap, bkgStart, bkgEnd = ap_px_to_use[oneFilt]
+            else:
+                print("No filter {} found in apsize table".format(oneFilt))
+                pdb.set_trace()
+
             po = photObj(directPaths=fileList,EECalc=EECalc,
-                         descrip=oneFilt)
+                         descrip=oneFilt,src_radius=srcap,
+                         bkg_radii=[bkgStart,bkgEnd])
             po.process_all_files()
 
 
@@ -247,8 +253,65 @@ def check_coordinates_in_fits(fits_filename,coord=defaultCoord):
             return False
 
 
-## for 0.3 arcsec
-apCorEstimate = {"F070W": 0.300, "F090W": 0.895, "F115W": 0.889, "F140M": 0.882, "F150W2": 0.878, 
-                "F150W": 0.878, "F162M": 0.878, "F164N": 0.877, "F182M": 0.877, "F187N": 0.877, 
-                "F200W": 0.876, "F210M": 0.875, "F212N": 0.873}
+## 0.3 arcsec for SW and LW
+## https://jwst-docs.stsci.edu/files/97978351/182257576/1/1669655270449/Encircled_Energy_LW_ETCv2.txt
 
+apCorEstimate = {'F070W': 0.895,
+                'F090W': 0.889,
+                'F115W': 0.882,
+                'F140M': 0.878,
+                'F150W2': 0.878,
+                'F150W': 0.878,
+                'F162M': 0.877,
+                'F164N': 0.877,
+                'F182M': 0.877,
+                'F187N': 0.876,
+                'F200W': 0.875,
+                'F210M': 0.873,
+                'F212N': 0.873,
+                'F250M': 0.853,
+                'F277W': 0.85,
+                'F300M': 0.849,
+                'F322W2': 0.847,
+                'F323N': 0.846,
+                'F335M': 0.845,
+                'F356W': 0.843,
+                'F360M': 0.841,
+                'F405N': 0.836,
+                'F410M': 0.835,
+                'F430M': 0.829,
+                'F444W': 0.822,
+                'F460M': 0.81,
+                'F466N': 0.809,
+                'F470N': 0.805,
+                'F480M': 0.796}
+
+ap_px_to_use = {'F070W' : [10, 12, 20],
+                'F090W' : [10, 12, 20],
+                'F115W' : [10, 12, 20],
+                'F140M' : [10, 12, 20],
+                'F150W2': [10, 12, 20],
+                'F150W' : [10, 12, 20],
+                'F162M' : [10, 12, 20],
+                'F164N' : [10, 12, 20],
+                'F182M' : [10, 12, 20],
+                'F187N' : [10, 12, 20],
+                'F200W' : [10, 12, 20],
+                'F210M' : [10, 12, 20],
+                'F212N' : [10, 12, 20],
+                'F250M' : [ 5,  6, 10],
+                'F277W' : [ 5,  6, 10],
+                'F300M' : [ 5,  6, 10],
+                'F322W2': [ 5,  6, 10],
+                'F323N' : [ 5,  6, 10],
+                'F335M' : [ 5,  6, 10],
+                'F356W' : [ 5,  6, 10],
+                'F360M' : [ 5,  6, 10],
+                'F405N' : [ 5,  6, 10],
+                'F410M' : [ 5,  6, 10],
+                'F430M' : [ 5,  6, 10],
+                'F444W' : [ 5,  6, 10],
+                'F460M' : [ 5,  6, 10],
+                'F466N' : [ 5,  6, 10],
+                'F470N' : [ 5,  6, 10],
+                'F480M' : [ 5,  6, 10]}
