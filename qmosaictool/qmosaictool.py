@@ -152,13 +152,13 @@ class photObj(object):
     
 
 class manyCals(object):
-    def __init__(self,pathSearch):
+    def __init__(self,pathSearch,srcDescrip='_test'):
         """
         object to organize and do photometry on many files
         """
         self.path_input = pathSearch
         self.fileList = search_for_images(pathSearch)
-        
+        self.srcDescrip = srcDescrip
 
     def gather_filters(self):
         t = Table()
@@ -190,8 +190,9 @@ class manyCals(object):
                 print("No filter {} found in apsize table".format(oneFilt))
                 pdb.set_trace()
 
+            oneDescrip = "{}{}".format(oneFilt,self.srcDescrip)
             po = photObj(directPaths=fileList,EECalc=EECalc,
-                         descrip=oneFilt,src_radius=srcap,
+                         descrip=oneDescrip,src_radius=srcap,
                          bkg_radii=[bkgStart,bkgEnd])
             po.process_all_files()
 
