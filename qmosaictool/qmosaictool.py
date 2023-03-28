@@ -26,15 +26,21 @@ class photObj(object):
     def __init__(self,paths='*',coord=defaultCoord,
                  EECalc=0.878,descrip='test',
                  manualPlateScale=None,src_radius=10,
-                 bkg_radii=[12,20]):
+                 bkg_radii=[12,20],
+                 directPaths=None):
         """
         manualPlateScale: None or float
             If None, will look up the plate scale
             If manually selected, it is the length of a pixel in 
             milli-arcseconds
         """
-        self.path_input = paths
-        self.fileList = search_for_images(paths)
+        if directPaths is None:
+            self.path_input = paths
+            self.fileList = search_for_images(paths)
+        else:
+            self.path_input = 'direct'
+            self.fileList = directPaths
+        
         self.centroidBox= 13
         self.coord = defaultCoord
         self.src_radius = src_radius
@@ -145,6 +151,45 @@ class photObj(object):
         t.write('all_phot_{}.ecsv'.format(self.descrip),overwrite=True)
     
 
+class manyCals(object):
+    def __init__(self,pathSearch):
+        """
+        object to organize and do photometry on many files
+        """
+        self.path_input = pathSearch
+        self.fileList = search_for_images(pathSearch)
+        
+
+    def gather_filters(self):
+        t = Table()
+        t['path'] = self.fileList
+        filterList = []
+        pupilList = []
+        for oneFile in self.fileList:
+            head = fits.getheader(oneFile)
+            filterList.append(head['FILTER'])
+            pupilList.append(head['PUPIL'])
+        t['Filter'] = filterList
+        t['Pupil'] = pupilList
+        self.t = t
+        self.filters = np.unique(t['Filter'])
+
+    def do_all_filt(self):
+        self.gather_filters()
+        for oneFilt in self.filters:
+            pts = self.t['Filter'] == oneFilt
+            fileList = self.t['path'][pts]
+            if oneFilt in apCorEstimate:
+                EECalc = apCorEstimate[oneFilt]
+            else:
+                print("No filter {} found in apcor table".format(oneFilt))
+                pdb.set_trace()
+            
+            po = photObj(directPaths=fileList,EECalc=EECalc,
+                         descrip=oneFilt)
+            po.process_all_files()
+
+
 def search_for_images(paths):
     """
     Search for a set of images
@@ -200,4 +245,10 @@ def check_coordinates_in_fits(fits_filename,coord=defaultCoord):
             return True
         else:
             return False
-    
+
+
+## for 0.3 arcsec
+apCorEstimate = {"F070W": 0.300, "F090W": 0.895, "F115W": 0.889, "F140M": 0.882, "F150W2": 0.878, 
+                "F150W": 0.878, "F162M": 0.878, "F164N": 0.877, "F182M": 0.877, "F187N": 0.877, 
+                "F200W": 0.876, "F210M": 0.875, "F212N": 0.873}
+
