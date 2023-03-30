@@ -134,8 +134,13 @@ class photObj(object):
                         y_st = np.max([int(yc - self.backg_radii[1] - margin),0])
                         y_end = np.min([int(yc + self.backg_radii[1] + margin),image_shape[0]])
                         cutout = image_data[y_st:y_end,x_st:x_end]
+                        cutout_error = error[y_st:y_end,x_st:x_end]
+                        
                         fixed_image = interpolate_replace_nans(cutout, kernel)
+                        fixed_error = interpolate_replace_nans(cutout_error,kernel)
                         image_data[y_st:y_end,x_st:x_end] = fixed_image
+                        error[y_st:y_end,x_st:x_end] = fixed_error
+                        
                     
                     phot_res = self.do_phot(xc,yc,image_data,head,error)
 
