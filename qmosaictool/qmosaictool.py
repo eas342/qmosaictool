@@ -305,6 +305,35 @@ def check_coordinates_in_fits(fits_filename,coord=defaultCoord):
             return False
 
 
+def lookup_flux(catalog,coord=defaultCoord,
+                distThresh=0.8 * u.arcsec):
+    """
+    Loook up flux from a catalog
+
+    Parameters
+    -----------
+    catalog: str
+        catalog name or wildcard search pattern
+    coord: astropy.coordinates.SkyCoord object
+        Coordinates for the star to look up
+    distThresh: astropy.units.quantity.Quantity
+        Distance threshold, inside which the a match is considered good
+    """
+    fileList = np.sort(glob.glob(catalog))
+    for onePath in fileList:
+        print(onePath)
+        dat = ascii.read(onePath)
+        res = coord.match_to_catalog_sky(dat['sky_centroid'])
+
+        distance = res[1][0].to(u.arcsec)
+        
+        if distance < distThresh:
+            fl = dat['aper_total_flux'][res[0]].to(u.uJy)
+            flerr = dat['aper_total_flux_err'][res[0]].to(u.uJy)
+            print('Flux: ',fl,'+/-',flerr)
+        else:
+            print("No source found in catalog closer than {}".format(distThresh))
+
 ## 0.3 arcsec for SW and LW
 ## https://jwst-docs.stsci.edu/files/97978351/182257576/1/1669655270449/Encircled_Energy_LW_ETCv2.txt
 
