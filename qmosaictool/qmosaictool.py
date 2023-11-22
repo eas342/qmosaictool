@@ -44,7 +44,7 @@ class photObj(object):
             self.fileList = directPaths
         
         self.centroidBox= 13
-        self.coord = defaultCoord
+        self.coord = coord
         self.src_radius = src_radius
         self.backg_radii = bkg_radii
         self.ee_calc = EECalc ## Needs an update for each filter!!!
