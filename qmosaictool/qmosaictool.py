@@ -178,14 +178,24 @@ class photObj(object):
 
 class manyCals(object):
     def __init__(self,pathSearch,srcDescrip='_test',
-                 interpolate=False):
+                 fixApSizes=None,
+                 interpolate=False,manualPlateScale=None):
         """
         object to organize and do photometry on many files
+
+        Parameters
+        ----------
+        fixApSize: list of 3 floats or None
+            Fixed aperture size for source, background start and
+            background end. Used for mosaics on a 
+            shared common pixel plate scale
         """
         self.path_input = pathSearch
         self.fileList = search_for_images(pathSearch)
         self.srcDescrip = srcDescrip
         self.interpolate = interpolate
+        self.fixApSizes=fixApSizes
+        self.manualPlateScale = manualPlateScale
 
     def gather_filters(self):
         t = Table()
@@ -211,7 +221,9 @@ class manyCals(object):
             else:
                 print("No filter {} found in apcor table".format(oneFilt))
                 pdb.set_trace()
-            if oneFilt in ap_px_to_use:
+            if self.fixApSizes is not None:
+                srcap, bkgStart, bkgEnd = self.fixApSizes
+            elif oneFilt in ap_px_to_use:
                 srcap, bkgStart, bkgEnd = ap_px_to_use[oneFilt]
             else:
                 print("No filter {} found in apsize table".format(oneFilt))
@@ -222,6 +234,7 @@ class manyCals(object):
                          descrip=oneDescrip,src_radius=srcap,
                          bkg_radii=[bkgStart,bkgEnd],
                          filterName=oneFilt,
+                         manualPlateScale=self.manualPlateScale,
                          interpolate=self.interpolate)
             po.process_all_files()
 
@@ -322,7 +335,10 @@ def lookup_flux(catalog,coord=defaultCoord,
     fileList = np.sort(glob.glob(catalog))
     for onePath in fileList:
         print(onePath)
-        dat = ascii.read(onePath)
+        all_dat = ascii.read(onePath)
+        goodpt = (np.isfinite(all_dat['sky_centroid'].ra) & 
+                  np.isfinite(all_dat['sky_centroid'].dec))
+        dat = all_dat[goodpt]
         res = coord.match_to_catalog_sky(dat['sky_centroid'])
 
         distance = res[1][0].to(u.arcsec)
