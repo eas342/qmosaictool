@@ -155,25 +155,29 @@ class photObj(object):
         t = Table()
         nFile = len(self.fileList)
         firstRow = True
+        oneRowFound = False
         for ind in tqdm.tqdm(np.arange(nFile)):
             oneFile = self.fileList[ind]
             phot_res = self.process_one_file(oneFile)
             if phot_res is not None:
+                
                 if firstRow == True:
                     useKeys = phot_res.keys()
                     allRes = {}
                     for oneKey in useKeys:
                         allRes[oneKey] = [phot_res[oneKey]]
                     firstRow = False ## now the first row is set
+                    oneRowFound = True
                 else:
                     for oneKey in useKeys:
                         allRes[oneKey].append(phot_res[oneKey])
-            
-        for oneKey in useKeys:
-            t[oneKey] = allRes[oneKey]
         
-        t.meta['FILTER'] = str(self.filterName)
-        t.write('all_phot_{}.ecsv'.format(self.descrip),overwrite=True)
+        if oneRowFound == True:
+            for oneKey in useKeys:
+                t[oneKey] = allRes[oneKey]
+            
+            t.meta['FILTER'] = str(self.filterName)
+            t.write('all_phot_{}.ecsv'.format(self.descrip),overwrite=True)
     
 
 class manyCals(object):
