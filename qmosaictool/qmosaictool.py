@@ -183,6 +183,7 @@ class photObj(object):
 class manyCals(object):
     def __init__(self,pathSearch,srcDescrip='_test',
                  fixApSizes=None,
+                 srcCoord=defaultCoord,
                  interpolate=False,manualPlateScale=None):
         """
         object to organize and do photometry on many files
@@ -200,6 +201,7 @@ class manyCals(object):
         self.interpolate = interpolate
         self.fixApSizes=fixApSizes
         self.manualPlateScale = manualPlateScale
+        self.srcCoord = srcCoord
 
     def gather_filters(self):
         t = Table()
@@ -238,6 +240,7 @@ class manyCals(object):
                          descrip=oneDescrip,src_radius=srcap,
                          bkg_radii=[bkgStart,bkgEnd],
                          filterName=oneFilt,
+                         coord=self.srcCoord,
                          manualPlateScale=self.manualPlateScale,
                          interpolate=self.interpolate)
             po.process_all_files()
@@ -264,6 +267,23 @@ class manyCals(object):
         res['phot (uJy) err'] = apPhot_err
         res['file'] = photFiles
         res.write('combined_phot_{}.ecsv'.format(self.srcDescrip),overwrite=True)
+
+    def run_all(self):
+        self.do_all_filt()
+        self.combine_phot()
+
+def run_on_catalog(catFileName='g_star_subset_ngc2506_ukirt.csv',
+                   pathSearch='../obsnum46/*_cal.fits'):
+    """
+    Do all photometry on all stars in a catalog
+    """
+    datCat = ascii.read(catFileName)
+    coord = SkyCoord(datCat['RA (deg)'],datCat['Dec (deg)'],unit='deg')
+    for ind,oneCoord in enumerate(coord):
+        srcName = datCat['Source'][ind].replace('=','_').replace('.','p')
+
+        mC = manyCals(srcCoord=oneCoord,srcDescrip=srcName)
+        mC.run_all(pathSearch=pathSearch)
 
 def search_for_images(paths):
     """
