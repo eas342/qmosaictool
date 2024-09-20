@@ -217,33 +217,36 @@ class manyCals(object):
         self.t = t
         self.filters = np.unique(t['Filter'])
 
+    def do_one_filter(self,oneFilt):
+        pts = self.t['Filter'] == oneFilt
+        fileList = self.t['path'][pts]
+        if oneFilt in apCorEstimate:
+            EECalc = apCorEstimate[oneFilt]
+        else:
+            print("No filter {} found in apcor table".format(oneFilt))
+            pdb.set_trace()
+        if self.fixApSizes is not None:
+            srcap, bkgStart, bkgEnd = self.fixApSizes
+        elif oneFilt in ap_px_to_use:
+            srcap, bkgStart, bkgEnd = ap_px_to_use[oneFilt]
+        else:
+            print("No filter {} found in apsize table".format(oneFilt))
+            pdb.set_trace()
+
+        oneDescrip = "{}{}".format(oneFilt,self.srcDescrip)
+        po = photObj(directPaths=fileList,EECalc=EECalc,
+                        descrip=oneDescrip,src_radius=srcap,
+                        bkg_radii=[bkgStart,bkgEnd],
+                        filterName=oneFilt,
+                        coord=self.srcCoord,
+                        manualPlateScale=self.manualPlateScale,
+                        interpolate=self.interpolate)
+        po.process_all_files()
+
     def do_all_filt(self):
         self.gather_filters()
         for oneFilt in self.filters:
-            pts = self.t['Filter'] == oneFilt
-            fileList = self.t['path'][pts]
-            if oneFilt in apCorEstimate:
-                EECalc = apCorEstimate[oneFilt]
-            else:
-                print("No filter {} found in apcor table".format(oneFilt))
-                pdb.set_trace()
-            if self.fixApSizes is not None:
-                srcap, bkgStart, bkgEnd = self.fixApSizes
-            elif oneFilt in ap_px_to_use:
-                srcap, bkgStart, bkgEnd = ap_px_to_use[oneFilt]
-            else:
-                print("No filter {} found in apsize table".format(oneFilt))
-                pdb.set_trace()
-
-            oneDescrip = "{}{}".format(oneFilt,self.srcDescrip)
-            po = photObj(directPaths=fileList,EECalc=EECalc,
-                         descrip=oneDescrip,src_radius=srcap,
-                         bkg_radii=[bkgStart,bkgEnd],
-                         filterName=oneFilt,
-                         coord=self.srcCoord,
-                         manualPlateScale=self.manualPlateScale,
-                         interpolate=self.interpolate)
-            po.process_all_files()
+            self.do_one_filter(oneFilt)
 
     def combine_phot(self):
         photFiles = np.sort(glob.glob('all_phot_*{}.ecsv'.format(self.srcDescrip)))
