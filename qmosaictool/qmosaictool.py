@@ -282,7 +282,8 @@ def run_on_catalog(catFileName='g_star_subset_ngc2506_ukirt.csv',
     for ind,oneCoord in enumerate(coord):
         srcName = datCat['Source'][ind].replace('=','_').replace('.','p')
 
-        mC = manyCals(srcCoord=oneCoord,srcDescrip=srcName)
+        mC = manyCals(pathSearch=pathSearch,srcCoord=oneCoord,
+                      srcDescrip=srcName)
         mC.run_all(pathSearch=pathSearch)
 
 def search_for_images(paths):
