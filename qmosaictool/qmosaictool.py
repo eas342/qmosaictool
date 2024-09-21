@@ -113,8 +113,11 @@ class photObj(object):
     
             # Convert the coordinates to pixel coordinates in the image
             wcs_res = WCS(HDUList['SCI'].header)
-            coord_pix = self.coord.to_pixel(wcs=wcs_res)
-        
+            try:
+                coord_pix = self.coord.to_pixel(wcs=wcs_res)
+            except:
+                coord_pix = self.coord.to_pixel(wcs=wcs_res,mode='wcs')
+            
             # Check if the pixel coordinates are inside the image
             xguess, yguess = coord_pix
             if 0 <= xguess < image_shape[1] and 0 <= yguess < image_shape[0]:
@@ -149,6 +152,7 @@ class photObj(object):
             else:
                 ## no source
                 phot_res = None
+            
         return phot_res
             
     def process_all_files(self):
