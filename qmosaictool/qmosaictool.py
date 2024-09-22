@@ -257,6 +257,7 @@ class manyCals(object):
         
         filt_list = []
         pxSum, apPhot, apPhot_err, coordMed = [], [], [], []
+        apPhot_std = []
         for oneFile in photFiles:
             dat = ascii.read(oneFile)
             filt = dat.meta['FILTER']
@@ -264,6 +265,7 @@ class manyCals(object):
             pxSum.append(np.nanmedian(dat['pxSum']))
             apPhot.append(np.nanmedian(dat['phot (uJy)']))
             apPhot_err.append(np.nanmedian(dat['phot (uJy) err']))
+            apPhot_std.append(np.nanstd(dat['phot (uJy)']))
             coordMed.append(SkyCoord(np.nanmedian(dat['coord'].ra),
                                      np.nanmedian(dat['coord'].dec)))
         res = Table()
@@ -272,6 +274,7 @@ class manyCals(object):
         res['pxSum'] = pxSum
         res['phot (uJy)'] = apPhot
         res['phot (uJy) err'] = apPhot_err
+        res['phot (uJy) std'] = apPhot_std
         res['file'] = photFiles
         res.write('combined_phot_{}.ecsv'.format(self.srcDescrip),overwrite=True)
 
