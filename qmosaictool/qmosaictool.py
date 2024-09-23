@@ -125,11 +125,14 @@ class photObj(object):
             srcAperture.plot(axes=ax,color=apColor)
             bkgAperture.plot(axes=ax,color=backColor)
 
-            ax.set_title(self.descrip + ' ' + str(self.filterName) + ' ' + fits_filename)
+            fits_fileName_base = os.path.basename(fits_filename)
+
+            ax.set_title(self.descrip + ' ' + str(self.filterName) + ' ' + fits_fileName_base)
             plotDir = 'plots/stamps_{}/'.format(self.descrip)
             if os.path.exists(plotDir) == False:
                 os.makedirs(plotDir)
-            fileName = 'stamp_{}'.format(fits_filename.replace('.fits','.png'))
+            
+            fileName = 'stamp_{}'.format(fits_fileName_base.replace('.fits','.png'))
             plotPath = os.path.join(plotDir,fileName)
             fig.savefig(plotPath)
             plt.close(fig)
