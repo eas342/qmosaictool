@@ -92,7 +92,8 @@ class photObj(object):
         if self.manualPlateScale is None:
             with fits.open(areaFile['area']) as HDUList:
                 avgArea = HDUList[0].header['PIXAR_SR']
-                nearbyArea = HDUList['SCI'].data[int(yc),int(xc)]
+                nearbyArea = HDUList['SCI'].data[int(yc + head['SUBSTRT2'] - 1.),
+                                                 int(xc + head['SUBSTRT1'] - 1.)]
                 useArea = avgArea * nearbyArea
         else:
             useArea = (self.manualPlateScale * 1e-3 / 206265.)**2
