@@ -238,7 +238,7 @@ class manyCals(object):
                  fixApSizes=None,
                  srcCoord=defaultCoord,
                  interpolate=False,manualPlateScale=None,
-                 apCorVersion=1):
+                 apCorVersion=2):
         """
         object to organize and do photometry on many files
 
