@@ -16,6 +16,7 @@ import astropy.units as u
 import crds
 import pdb
 import os
+import matplotlib.pyplot as plt
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 
 defaultCoord = SkyCoord(120.0592192 * u.deg,-10.79151878 * u.deg)
@@ -29,7 +30,8 @@ class photObj(object):
                  manualPlateScale=None,src_radius=10,
                  bkg_radii=[12,20],
                  directPaths=None,filterName=None,
-                 interpolate=False):
+                 interpolate=False,
+                 saveStampImages=True):
         """
         manualPlateScale: None or float
             If None, will look up the plate scale
@@ -52,6 +54,7 @@ class photObj(object):
         self.manualPlateScale = manualPlateScale
         self.filterName = filterName
         self.interpolate = interpolate
+        self.saveStampImages = saveStampImages
 
     def get_centroid(self,xguess,yguess,image):
         """
@@ -63,7 +66,8 @@ class photObj(object):
 
         return x,y
 
-    def do_phot(self,xc,yc,image,head,error):
+    def do_phot(self,xc,yc,image,head,error,
+                fits_filename=None):
         """ 
         Do aperture photometry
         """
@@ -93,6 +97,44 @@ class photObj(object):
         else:
             useArea = (self.manualPlateScale * 1e-3 / 206265.)**2
         
+        if self.saveStampImages == True:
+            boxsize=20
+            apColor='black'
+            backColor='cyan'
+
+            fig, ax = plt.subplots(figsize=None)
+            xStamp_proposed = np.array(xc[0] + np.array([-1,1]) * boxsize,dtype=int)
+            yStamp_proposed = np.array(yc[0] + np.array([-1,1]) * boxsize,dtype=int)
+            xStamp, yStamp = ensure_coordinates_are_within_bounds(xStamp_proposed,
+                                                                  yStamp_proposed,
+                                                                  image)
+            
+            stamp = image[yStamp[0]:yStamp[1],xStamp[0]:xStamp[1]]
+            useVmin = np.nanpercentile(stamp,1)
+            useVmax = np.nanpercentile(stamp,99)
+
+            imData = ax.imshow(image,cmap='viridis',
+                               vmin=useVmin,vmax=useVmax,
+                               interpolation='nearest')
+            ax.invert_yaxis()
+            ax.set_xlim(xStamp[0],xStamp[1])
+            ax.set_ylim(yStamp[0],yStamp[1])
+            #
+            # ax.get_xaxis().set_visible(False)
+            # ax.get_yaxis().set_visible(False)
+            srcAperture.plot(axes=ax,color=apColor)
+            bkgAperture.plot(axes=ax,color=backColor)
+
+            ax.set_title(self.descrip + ' ' + str(self.filterName) + ' ' + fits_filename)
+            plotDir = 'plots/stamps_{}/'.format(self.descrip)
+            if os.path.exists(plotDir) == False:
+                os.makedirs(plotDir)
+            fileName = 'stamp_{}'.format(fits_filename.replace('.fits','.png'))
+            plotPath = os.path.join(plotDir,fileName)
+            fig.savefig(plotPath)
+            plt.close(fig)
+
+
         photJy = (bkgSubPhot * useArea / self.ee_calc * u.MJy).to(u.uJy)
         photJy_err = (bkgSubPhot_err * useArea/self.ee_calc * u.MJy).to(u.uJy)
         photRes = {}
@@ -120,6 +162,7 @@ class photObj(object):
             
             # Check if the pixel coordinates are inside the image
             xguess, yguess = coord_pix
+            
             if 0 <= xguess < image_shape[1] and 0 <= yguess < image_shape[0]:
                 xc, yc = self.get_centroid(xguess,yguess,image_data)
                 newPos = pixel_to_skycoord(xc,yc,wcs_res)
@@ -145,7 +188,8 @@ class photObj(object):
                         error[y_st:y_end,x_st:x_end] = fixed_error
                         
                     
-                    phot_res = self.do_phot(xc,yc,image_data,head,error)
+                    phot_res = self.do_phot(xc,yc,image_data,head,error,
+                                            fits_filename=fits_filename)
 
                     phot_res['coord'] = newPos
                     phot_res['filename'] = os.path.basename(fits_filename)
@@ -352,6 +396,24 @@ def check_coordinates_in_fits(fits_filename,coord=defaultCoord):
         else:
             return False
 
+def ensure_coordinates_are_within_bounds(xCoord,yCoord,img):
+    """
+    Check if x and y coordinates are inside an image
+    If they are are, spit them back.
+    Otherwise, give the coordinates at the closest x/y edge
+    
+    Parameters
+    ----------
+    """
+    assert len(img.shape) == 2, "Should have a 2D image"
+    
+    xmin, ymin = 0, 0
+    xmax = img.shape[1] - 1
+    ymax = img.shape[0] - 1
+    out_x = np.minimum(np.maximum(xCoord,0),xmax)
+    out_y = np.minimum(np.maximum(yCoord,0),ymax)
+
+    return out_x,out_y
 
 def lookup_flux(catalog,coord=defaultCoord,
                 distThresh=0.8 * u.arcsec):
