@@ -112,6 +112,8 @@ class photObj(object):
             stamp = image[yStamp[0]:yStamp[1],xStamp[0]:xStamp[1]]
             useVmin = np.nanpercentile(stamp,1)
             useVmax = np.nanpercentile(stamp,99)
+            # useVmin = 0.
+            # useVmax = 4.
 
             imData = ax.imshow(image,cmap='viridis',
                                vmin=useVmin,vmax=useVmax,
@@ -235,7 +237,8 @@ class manyCals(object):
     def __init__(self,pathSearch,srcDescrip='_test',
                  fixApSizes=None,
                  srcCoord=defaultCoord,
-                 interpolate=False,manualPlateScale=None):
+                 interpolate=False,manualPlateScale=None,
+                 apCorVersion=1):
         """
         object to organize and do photometry on many files
 
@@ -253,6 +256,7 @@ class manyCals(object):
         self.fixApSizes=fixApSizes
         self.manualPlateScale = manualPlateScale
         self.srcCoord = srcCoord
+        self.apCorVersion = apCorVersion
 
     def gather_filters(self):
         t = Table()
@@ -272,7 +276,12 @@ class manyCals(object):
         pts = self.t['Filter'] == oneFilt
         fileList = self.t['path'][pts]
         if oneFilt in apCorEstimate:
-            EECalc = apCorEstimate[oneFilt]
+            if self.apCorVersion == 1:
+                EECalc = apCorEstimate[oneFilt]
+            elif self.apCorVersion == 2:
+                EECalc = apCorEstimate2[oneFilt]
+            else:
+                raise NotImplementedError('apcor version {}'.format(self.apCorVersion))
         else:
             print("No filter {} found in apcor table".format(oneFilt))
             pdb.set_trace()
@@ -330,7 +339,8 @@ class manyCals(object):
         self.combine_phot()
 
 def run_on_catalog(catFileName='g_star_subset_ngc2506_ukirt.csv',
-                   pathSearch='../obsnum46/*_cal.fits'):
+                   pathSearch='../obsnum46/*_cal.fits',
+                   manualPlateScale=None):
     """
     Do all photometry on all stars in a catalog
     """
@@ -340,7 +350,8 @@ def run_on_catalog(catFileName='g_star_subset_ngc2506_ukirt.csv',
         srcName = datCat['Source'][ind].replace('=','_').replace('.','p')
 
         mC = manyCals(pathSearch=pathSearch,srcCoord=oneCoord,
-                      srcDescrip=srcName,interpolate=True)
+                      srcDescrip=srcName,interpolate=True,
+                      manualPlateScale=manualPlateScale)
         mC.run_all()
 
 def search_for_images(paths):
@@ -482,6 +493,38 @@ apCorEstimate = {'F070W': 0.895,
                 'F466N': 0.809,
                 'F470N': 0.805,
                 'F480M': 0.796}
+
+
+## webbpsf version 1.1.1.dev12+g04ded89
+apCorEstimate2 = {'F070W': 0.9031388548634747,
+                'F090W': 0.8968381508436948,
+                'F115W': 0.8883509716204238,
+                'F140M': 0.8832016153277009,
+                'F150W2': 0.883015842258907,
+                'F150W': 0.8820107349093335,
+                'F162M': 0.8802571843806782,
+                'F164N': 0.8797310986229414,
+                'F182M': 0.880641470779922,
+                'F187N': 0.8806931237722377,
+                'F200W': 0.8785653157961328,
+                'F210M': 0.8764545733488012,
+                'F212N': 0.8762056219826185,
+                'F250M': 0.8610054551207755,
+                'F277W': 0.8541401741018596,
+                'F300M': 0.8504113896229468,
+                'F322W2': 0.8507728071086845,
+                'F323N': 0.8504215999223351,
+                'F335M': 0.8489155439770735,
+                'F356W': 0.8467229781409492,
+                'F360M': 0.8455530485724523,
+                'F405N': 0.8414246057137557,
+                'F410M': 0.8408673014384028,
+                'F430M': 0.837606210506533,
+                'F444W': 0.8318764042252593,
+                'F460M': 0.8242323245411306,
+                'F466N': 0.8229721097481405,
+                'F470N': 0.8197909374228896,
+                'F480M': 0.8124513531840737}
 
 ap_px_to_use = {'F070W' : [10, 12, 20],
                 'F090W' : [10, 12, 20],
