@@ -63,7 +63,7 @@ class photObj(object):
         x, y = centroid_sources(image, xguess, yguess,
                                 box_size=self.centroidBox,
                                 centroid_func=centroid_com)
-
+        
         return x,y
 
     def do_phot(self,xc,yc,image,head,error,
@@ -169,7 +169,7 @@ class photObj(object):
             # Check if the pixel coordinates are inside the image
             xguess, yguess = coord_pix
             
-            if 0 <= xguess < image_shape[1] and 0 <= yguess < image_shape[0]:
+            if 1 <= xguess < image_shape[1] - 1 and 1 <= yguess < image_shape[0]- 1:
                 xc, yc = self.get_centroid(xguess,yguess,image_data)
                 newPos = pixel_to_skycoord(xc,yc,wcs_res)
                 separation = self.coord.separation(newPos)
