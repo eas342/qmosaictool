@@ -22,7 +22,9 @@ from copy import deepcopy
 
 try:
     from tshirt.pipeline.instrument_specific import rowamp_sub
+    no_tshirt=False
 except:
+    no_tshirt=True
     print("Could not find tshirt code, ROEBA not available")
 
 defaultCoord = SkyCoord(120.0592192 * u.deg,-10.79151878 * u.deg)
@@ -199,6 +201,28 @@ class photObj(object):
                 
         return image_data, error
 
+    def proc_ROEBA(self,image_data,error,head):
+        rateThreshold = self.get_roeba_threshold(image_data,error)
+        ROEBAmask = (image_data < rateThreshold)
+        image_data,REOBAmodel = rowamp_sub.do_backsub(image_data,backgMask=ROEBAmask,
+                                           amplifiers=head['NOUTPUTS'],
+                                           saveDiagnostics=True,
+                                           badRowsAllowed=100)
+        return image_data
+
+    def get_roeba_threshold(self,image_data,error):
+        """
+        Find the ROEBA threshold
+        """
+        valid_pt = np.isfinite(error)
+        nonzero = error[valid_pt] > 0
+        
+        backg_est = np.nanmedian(image_data)
+        err_est = np.percentile(error[valid_pt][nonzero],1)
+        rateThreshold = 5. * err_est + backg_est * 1.3
+        return rateThreshold
+
+
     def process_one_file(self,fits_filename):
         with fits.open(fits_filename) as HDUList:
             image_data = HDUList['SCI'].data
@@ -226,8 +250,11 @@ class photObj(object):
                 else:
                     if (self.interpolate == True) | (self.interpolate == 'backOnly'):
                         image_data,error = self.do_interpolation(xc,yc,image_data,error)
-                    #if self.ROEBA == True:
-                    #    self.proc_ROEBA()
+                    if self.ROEBA == True:
+                        if no_tshirt == True:
+                            raise Exception("Cannot do ROEBA w/out tshirt installed")
+                        image_data = self.proc_ROEBA(image_data,error,head)
+                        
                     
                     phot_res = self.do_phot(xc,yc,image_data,head,error,
                                             fits_filename=fits_filename)
