@@ -206,11 +206,11 @@ class photObj(object):
                             
 
 
-                            fig, axArr = plt.subplots(3)
-                            axArr[0].imshow(image_data,vmin=0,vmax=100)
-                            axArr[1].imshow(srcMask)
-                            axArr[2].imshow(orig_image,vmin=0,vmax=100)
-                            fig.show()
+                            # fig, axArr = plt.subplots(3)
+                            # axArr[0].imshow(image_data,vmin=0,vmax=100)
+                            # axArr[1].imshow(srcMask)
+                            # axArr[2].imshow(orig_image,vmin=0,vmax=100)
+                            # fig.show()
 
                             image_data[srcMask] = orig_image[srcMask]
                             error[srcMask] = orig_error[srcMask]
