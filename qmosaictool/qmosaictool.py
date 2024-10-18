@@ -18,6 +18,7 @@ import pdb
 import os
 import matplotlib.pyplot as plt
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
+from copy import deepcopy
 
 defaultCoord = SkyCoord(120.0592192 * u.deg,-10.79151878 * u.deg)
 
@@ -30,7 +31,7 @@ class photObj(object):
                  manualPlateScale=None,src_radius=10,
                  bkg_radii=[12,20],
                  directPaths=None,filterName=None,
-                 interpolate=False,
+                 interpolate='backOnly',
                  saveStampImages=True):
         """
         manualPlateScale: None or float
@@ -177,7 +178,7 @@ class photObj(object):
                     phot_res = None
                 else:
                     
-                    if self.interpolate == True:
+                    if (self.interpolate == True) | (self.interpolate == 'backOnly'):
                         ## interpolate where the photometry is happening
                         kernel = Gaussian2DKernel(x_stddev=1)
                         margin = 5
@@ -190,9 +191,30 @@ class photObj(object):
                         
                         fixed_image = interpolate_replace_nans(cutout, kernel)
                         fixed_error = interpolate_replace_nans(cutout_error,kernel)
+                        if self.interpolate == 'backOnly':
+                            orig_image = deepcopy(image_data)
+                            orig_error = deepcopy(error)
+                        
                         image_data[y_st:y_end,x_st:x_end] = fixed_image
                         error[y_st:y_end,x_st:x_end] = fixed_error
                         
+                        if self.interpolate == 'backOnly':
+                            nY, nX = orig_image.shape
+                            yArr, xArr = np.mgrid[0:nY,0:nX]
+                            rad_distance = np.sqrt((xArr-xc[0])**2 + (yArr-yc[0])**2)
+                            srcMask = rad_distance < self.src_radius
+                            
+
+
+                            fig, axArr = plt.subplots(3)
+                            axArr[0].imshow(image_data,vmin=0,vmax=100)
+                            axArr[1].imshow(srcMask)
+                            axArr[2].imshow(orig_image,vmin=0,vmax=100)
+                            fig.show()
+
+                            image_data[srcMask] = orig_image[srcMask]
+                            error[srcMask] = orig_error[srcMask]
+                            pdb.set_trace()
                     
                     phot_res = self.do_phot(xc,yc,image_data,head,error,
                                             fits_filename=fits_filename)
@@ -353,7 +375,7 @@ def run_on_catalog(catFileName='g_star_subset_ngc2506_ukirt.csv',
         srcName = datCat['Source'][ind].replace('=','_').replace('.','p')
 
         mC = manyCals(pathSearch=pathSearch,srcCoord=oneCoord,
-                      srcDescrip=srcName,interpolate=True,
+                      srcDescrip=srcName,interpolate='backOnly',
                       manualPlateScale=manualPlateScale)
         mC.run_all()
 
