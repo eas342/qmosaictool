@@ -20,6 +20,11 @@ import matplotlib.pyplot as plt
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 from copy import deepcopy
 
+try:
+    from tshirt.pipeline.instrument_specific import rowamp_sub
+except:
+    print("Could not find tshirt code, ROEBA not available")
+
 defaultCoord = SkyCoord(120.0592192 * u.deg,-10.79151878 * u.deg)
 
 class photObj(object):
@@ -32,7 +37,8 @@ class photObj(object):
                  bkg_radii=[12,20],
                  directPaths=None,filterName=None,
                  interpolate='backOnly',
-                 saveStampImages=True):
+                 saveStampImages=True,
+                 ROEBA=True):
         """
         manualPlateScale: None or float
             If None, will look up the plate scale
@@ -56,6 +62,7 @@ class photObj(object):
         self.filterName = filterName
         self.interpolate = interpolate
         self.saveStampImages = saveStampImages
+        self.ROEBA = ROEBA
 
     def get_centroid(self,xguess,yguess,image):
         """
@@ -130,7 +137,7 @@ class photObj(object):
             bkgAperture.plot(axes=ax,color=backColor)
 
             fits_fileName_base = os.path.basename(fits_filename)
-
+            
             ax.set_title(self.descrip + ' ' + str(self.filterName) + ' ' + fits_fileName_base)
             plotDir = 'plots/stamps_{}/'.format(self.descrip)
             if os.path.exists(plotDir) == False:
@@ -151,6 +158,46 @@ class photObj(object):
         photRes['bkgEst'] = bkgEst[0]
         return photRes
 
+
+    def do_interpolation(self,xc,yc,image_data,error):
+        image_shape = image_data.shape
+        ## interpolate where the photometry is happening
+        kernel = Gaussian2DKernel(x_stddev=1)
+        margin = 5
+        x_st = np.max([int(xc - self.backg_radii[1] - margin),0])
+        x_end = np.min([int(xc + self.backg_radii[1] + margin),image_shape[1]])
+        y_st = np.max([int(yc - self.backg_radii[1] - margin),0])
+        y_end = np.min([int(yc + self.backg_radii[1] + margin),image_shape[0]])
+        cutout = image_data[y_st:y_end,x_st:x_end]
+        cutout_error = error[y_st:y_end,x_st:x_end]
+        
+        fixed_image = interpolate_replace_nans(cutout, kernel)
+        fixed_error = interpolate_replace_nans(cutout_error,kernel)
+        if self.interpolate == 'backOnly':
+            orig_image = deepcopy(image_data)
+            orig_error = deepcopy(error)
+        
+        image_data[y_st:y_end,x_st:x_end] = fixed_image
+        error[y_st:y_end,x_st:x_end] = fixed_error
+        
+        if self.interpolate == 'backOnly':
+            nY, nX = orig_image.shape
+            yArr, xArr = np.mgrid[0:nY,0:nX]
+            rad_distance = np.sqrt((xArr-xc[0])**2 + (yArr-yc[0])**2)
+            srcMask = rad_distance < self.src_radius
+            
+
+
+            # fig, axArr = plt.subplots(3)
+            # axArr[0].imshow(image_data,vmin=0,vmax=100)
+            # axArr[1].imshow(srcMask)
+            # axArr[2].imshow(orig_image,vmin=0,vmax=100)
+            # fig.show()
+
+            image_data[srcMask] = orig_image[srcMask]
+            error[srcMask] = orig_error[srcMask]
+                
+        return image_data, error
 
     def process_one_file(self,fits_filename):
         with fits.open(fits_filename) as HDUList:
@@ -177,44 +224,10 @@ class photObj(object):
                 if separation > 0.8 * u.arcsec:
                     phot_res = None
                 else:
-                    
                     if (self.interpolate == True) | (self.interpolate == 'backOnly'):
-                        ## interpolate where the photometry is happening
-                        kernel = Gaussian2DKernel(x_stddev=1)
-                        margin = 5
-                        x_st = np.max([int(xc - self.backg_radii[1] - margin),0])
-                        x_end = np.min([int(xc + self.backg_radii[1] + margin),image_shape[1]])
-                        y_st = np.max([int(yc - self.backg_radii[1] - margin),0])
-                        y_end = np.min([int(yc + self.backg_radii[1] + margin),image_shape[0]])
-                        cutout = image_data[y_st:y_end,x_st:x_end]
-                        cutout_error = error[y_st:y_end,x_st:x_end]
-                        
-                        fixed_image = interpolate_replace_nans(cutout, kernel)
-                        fixed_error = interpolate_replace_nans(cutout_error,kernel)
-                        if self.interpolate == 'backOnly':
-                            orig_image = deepcopy(image_data)
-                            orig_error = deepcopy(error)
-                        
-                        image_data[y_st:y_end,x_st:x_end] = fixed_image
-                        error[y_st:y_end,x_st:x_end] = fixed_error
-                        
-                        if self.interpolate == 'backOnly':
-                            nY, nX = orig_image.shape
-                            yArr, xArr = np.mgrid[0:nY,0:nX]
-                            rad_distance = np.sqrt((xArr-xc[0])**2 + (yArr-yc[0])**2)
-                            srcMask = rad_distance < self.src_radius
-                            
-
-
-                            # fig, axArr = plt.subplots(3)
-                            # axArr[0].imshow(image_data,vmin=0,vmax=100)
-                            # axArr[1].imshow(srcMask)
-                            # axArr[2].imshow(orig_image,vmin=0,vmax=100)
-                            # fig.show()
-
-                            image_data[srcMask] = orig_image[srcMask]
-                            error[srcMask] = orig_error[srcMask]
-                            
+                        image_data,error = self.do_interpolation(xc,yc,image_data,error)
+                    #if self.ROEBA == True:
+                    #    self.proc_ROEBA()
                     
                     phot_res = self.do_phot(xc,yc,image_data,head,error,
                                             fits_filename=fits_filename)
@@ -261,7 +274,7 @@ class manyCals(object):
                  fixApSizes=None,
                  srcCoord=defaultCoord,
                  interpolate=False,manualPlateScale=None,
-                 apCorVersion=3):
+                 apCorVersion=3,ROEBA=True):
         """
         object to organize and do photometry on many files
 
@@ -280,6 +293,7 @@ class manyCals(object):
         self.manualPlateScale = manualPlateScale
         self.srcCoord = srcCoord
         self.apCorVersion = apCorVersion
+        self.ROEBA = ROEBA
 
     def gather_filters(self):
         t = Table()
@@ -325,7 +339,8 @@ class manyCals(object):
                         filterName=oneFilt,
                         coord=self.srcCoord,
                         manualPlateScale=self.manualPlateScale,
-                        interpolate=self.interpolate)
+                        interpolate=self.interpolate,
+                        ROEBA=self.ROEBA)
         po.process_all_files()
 
     def do_all_filt(self):
@@ -366,7 +381,8 @@ class manyCals(object):
 def run_on_catalog(catFileName='g_star_subset_ngc2506_ukirt.csv',
                    pathSearch='../obsnum46/*_cal.fits',
                    manualPlateScale=None,
-                   interpolate='backOnly'):
+                   interpolate='backOnly',
+                   ROEBA=True):
     """
     Do all photometry on all stars in a catalog
     """
@@ -377,7 +393,8 @@ def run_on_catalog(catFileName='g_star_subset_ngc2506_ukirt.csv',
 
         mC = manyCals(pathSearch=pathSearch,srcCoord=oneCoord,
                       srcDescrip=srcName,interpolate=interpolate,
-                      manualPlateScale=manualPlateScale)
+                      manualPlateScale=manualPlateScale,
+                      ROEBA=ROEBA)
         mC.run_all()
 
 def search_for_images(paths):
