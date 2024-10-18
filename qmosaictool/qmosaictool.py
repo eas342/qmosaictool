@@ -214,7 +214,7 @@ class photObj(object):
 
                             image_data[srcMask] = orig_image[srcMask]
                             error[srcMask] = orig_error[srcMask]
-                            pdb.set_trace()
+                            
                     
                     phot_res = self.do_phot(xc,yc,image_data,head,error,
                                             fits_filename=fits_filename)
