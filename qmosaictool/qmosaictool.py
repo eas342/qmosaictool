@@ -365,7 +365,8 @@ class manyCals(object):
 
 def run_on_catalog(catFileName='g_star_subset_ngc2506_ukirt.csv',
                    pathSearch='../obsnum46/*_cal.fits',
-                   manualPlateScale=None):
+                   manualPlateScale=None,
+                   interpolate='backOnly'):
     """
     Do all photometry on all stars in a catalog
     """
@@ -375,7 +376,7 @@ def run_on_catalog(catFileName='g_star_subset_ngc2506_ukirt.csv',
         srcName = datCat['Source'][ind].replace('=','_').replace('.','p')
 
         mC = manyCals(pathSearch=pathSearch,srcCoord=oneCoord,
-                      srcDescrip=srcName,interpolate='backOnly',
+                      srcDescrip=srcName,interpolate=interpolate,
                       manualPlateScale=manualPlateScale)
         mC.run_all()
 
