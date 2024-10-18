@@ -239,7 +239,7 @@ class manyCals(object):
                  fixApSizes=None,
                  srcCoord=defaultCoord,
                  interpolate=False,manualPlateScale=None,
-                 apCorVersion=2):
+                 apCorVersion=3):
         """
         object to organize and do photometry on many files
 
@@ -281,6 +281,8 @@ class manyCals(object):
                 EECalc = apCorEstimate[oneFilt]
             elif self.apCorVersion == 2:
                 EECalc = apCorEstimate2[oneFilt]
+            elif self.apCorVersion == 3:
+                EECalc = apCorEstimate3[oneFilt]
             else:
                 raise NotImplementedError('apcor version {}'.format(self.apCorVersion))
         else:
@@ -526,6 +528,38 @@ apCorEstimate2 = {'F070W': 0.9031388548634747,
                 'F466N': 0.8229721097481405,
                 'F470N': 0.8197909374228896,
                 'F480M': 0.8124513531840737}
+
+## webbpsf version 1.4.0 with background aperture correctly specified
+## webbpsf version has a very minor impact, but backsub does
+apCorEstimate3 = {'F070W': 0.9030246097261966,
+                 'F090W': 0.8972056516089937,
+                 'F115W': 0.8885094628843521,
+                 'F140M': 0.8832408859009204,
+                 'F150W2': 0.8829798269275778,
+                 'F150W': 0.8819573634031185,
+                 'F162M': 0.8801168422275177,
+                 'F164N': 0.8795816581311315,
+                 'F182M': 0.8805854499039166,
+                 'F187N': 0.8806524233110596,
+                 'F200W': 0.8787473004548437,
+                 'F210M': 0.8768251842221734,
+                 'F212N': 0.8766424041619253,
+                 'F250M': 0.8613861220271057,
+                 'F277W': 0.8543761859810872,
+                 'F300M': 0.8508660757652242,
+                 'F322W2': 0.8506909265700936,
+                 'F323N': 0.8505717867285144,
+                 'F335M': 0.8489402511488617,
+                 'F356W': 0.8465123918780468,
+                 'F360M': 0.8451518088602027,
+                 'F405N': 0.8406677124304505,
+                 'F410M': 0.8401577958786657,
+                 'F430M': 0.8370796493109105,
+                 'F444W': 0.8317385406096474,
+                 'F460M': 0.8244242976465441,
+                 'F466N': 0.8232053319526151,
+                 'F470N': 0.8201566388198096,
+                 'F480M': 0.8132095241759468}
 
 ap_px_to_use = {'F070W' : [10, 12, 20],
                 'F090W' : [10, 12, 20],
