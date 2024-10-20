@@ -40,7 +40,8 @@ class photObj(object):
                  directPaths=None,filterName=None,
                  interpolate='backOnly',
                  saveStampImages=True,
-                 ROEBA=True):
+                 ROEBA=True,
+                 strictDQ=False):
         """
         manualPlateScale: None or float
             If None, will look up the plate scale
@@ -65,6 +66,7 @@ class photObj(object):
         self.interpolate = interpolate
         self.saveStampImages = saveStampImages
         self.ROEBA = ROEBA
+        self.strictDQ = strictDQ
 
     def get_centroid(self,xguess,yguess,image):
         """
@@ -222,6 +224,16 @@ class photObj(object):
         rateThreshold = 5. * err_est + backg_est * 1.3
         return rateThreshold
 
+    def strict_dq_Nan(self,image,DQ):
+        """
+        Set all pixels without 0 DQ to NaN
+        For example, don't try to recover parts of Jump step-flagged data
+        usually sources are bright where this doesn't make sense
+        """
+        bad_dq_mask = (DQ != 0)
+        image[bad_dq_mask] = np.nan
+        
+        return image
 
     def process_one_file(self,fits_filename):
         with fits.open(fits_filename) as HDUList:
@@ -254,7 +266,9 @@ class photObj(object):
                         if no_tshirt == True:
                             raise Exception("Cannot do ROEBA w/out tshirt installed")
                         image_data = self.proc_ROEBA(image_data,error,head)
-                        
+                    
+                    if self.strictDQ == True:
+                        image_data = self.strict_dq_Nan(image_data,HDUList['DQ'].data)
                     
                     phot_res = self.do_phot(xc,yc,image_data,head,error,
                                             fits_filename=fits_filename)
@@ -300,7 +314,7 @@ class photObj(object):
             t.meta['manualPlateScale'] = self.manualPlateScale
             t.meta['interpolate'] = self.interpolate
             t.meta['ROEBAcorrected'] = self.ROEBA
-
+            t.meta['strictDQ'] = self.strictDQ
 
             t.write('all_phot_{}.ecsv'.format(self.descrip),overwrite=True)
     
@@ -310,7 +324,8 @@ class manyCals(object):
                  fixApSizes=None,
                  srcCoord=defaultCoord,
                  interpolate=False,manualPlateScale=None,
-                 apCorVersion=4,ROEBA=True):
+                 apCorVersion=4,ROEBA=True,
+                 strictDQ=False):
         """
         object to organize and do photometry on many files
 
@@ -330,6 +345,7 @@ class manyCals(object):
         self.srcCoord = srcCoord
         self.apCorVersion = apCorVersion
         self.ROEBA = ROEBA
+        self.strictDQ = strictDQ
 
     def gather_filters(self):
         t = Table()
@@ -378,7 +394,8 @@ class manyCals(object):
                         coord=self.srcCoord,
                         manualPlateScale=self.manualPlateScale,
                         interpolate=self.interpolate,
-                        ROEBA=self.ROEBA)
+                        ROEBA=self.ROEBA,
+                        strictDQ=self.strictDQ)
         po.process_all_files()
 
     def do_all_filt(self):
@@ -412,6 +429,8 @@ class manyCals(object):
         res['file'] = photFiles
 
         res.meta['apCorVersion'] = self.apCorVersion
+        res.meta['strictDQ'] = self.strictDQ
+        res.meta['REOBAcorrection'] = self.ROEBA
         res.write('combined_phot_{}.ecsv'.format(self.srcDescrip),overwrite=True)
 
     def run_all(self):
@@ -422,7 +441,7 @@ def run_on_catalog(catFileName='g_star_subset_ngc2506_ukirt.csv',
                    pathSearch='../obsnum46/*_cal.fits',
                    manualPlateScale=None,
                    interpolate='backOnly',
-                   ROEBA=True):
+                   ROEBA=True,strictDQ=False):
     """
     Do all photometry on all stars in a catalog
     """
@@ -434,7 +453,7 @@ def run_on_catalog(catFileName='g_star_subset_ngc2506_ukirt.csv',
         mC = manyCals(pathSearch=pathSearch,srcCoord=oneCoord,
                       srcDescrip=srcName,interpolate=interpolate,
                       manualPlateScale=manualPlateScale,
-                      ROEBA=ROEBA)
+                      ROEBA=ROEBA,strictDQ=strictDQ)
         mC.run_all()
 
 def search_for_images(paths):
