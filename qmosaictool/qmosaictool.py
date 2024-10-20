@@ -293,6 +293,15 @@ class photObj(object):
                 t[oneKey] = allRes[oneKey]
             
             t.meta['FILTER'] = str(self.filterName)
+            t.meta['src_radius'] = self.src_radius
+            t.meta['backg_radii'] = self.backg_radii
+            t.meta['ee_calc'] = self.ee_calc
+            t.meta['descrip'] = self.descrip
+            t.meta['manualPlateScale'] = self.manualPlateScale
+            t.meta['interpolate'] = self.interpolate
+            t.meta['ROEBAcorrected'] = self.ROEBA
+
+
             t.write('all_phot_{}.ecsv'.format(self.descrip),overwrite=True)
     
 
@@ -301,7 +310,7 @@ class manyCals(object):
                  fixApSizes=None,
                  srcCoord=defaultCoord,
                  interpolate=False,manualPlateScale=None,
-                 apCorVersion=3,ROEBA=True):
+                 apCorVersion=4,ROEBA=True):
         """
         object to organize and do photometry on many files
 
@@ -346,6 +355,8 @@ class manyCals(object):
                 EECalc = apCorEstimate2[oneFilt]
             elif self.apCorVersion == 3:
                 EECalc = apCorEstimate3[oneFilt]
+            elif self.apCorVersion == 4:
+                EECalc = apCorEstimate4[oneFilt]
             else:
                 raise NotImplementedError('apcor version {}'.format(self.apCorVersion))
         else:
@@ -399,6 +410,8 @@ class manyCals(object):
         res['phot (uJy) err'] = apPhot_err
         res['phot (uJy) std'] = apPhot_std
         res['file'] = photFiles
+
+        res.meta['apCorVersion'] = self.apCorVersion
         res.write('combined_phot_{}.ecsv'.format(self.srcDescrip),overwrite=True)
 
     def run_all(self):
@@ -596,8 +609,13 @@ apCorEstimate2 = {'F070W': 0.9031388548634747,
                 'F470N': 0.8197909374228896,
                 'F480M': 0.8124513531840737}
 
-## webbpsf version 1.4.0 with background aperture correctly specified
+## webbpsf version 1.4.0 with background aperture specified
 ## webbpsf version has a very minor impact, but backsub does
+## Update on 2024-10-20 I did NOT correctly subtract the background
+## I did not multiply the background Annulus energy times the aperture
+## area ratio, as you would with aperture photometry
+## use version 4 below
+
 apCorEstimate3 = {'F070W': 0.8647446769064007,
                 'F090W': 0.8597100877984547,
                 'F115W': 0.8511590800856805,
@@ -627,6 +645,42 @@ apCorEstimate3 = {'F070W': 0.8647446769064007,
                 'F466N': 0.7832975985978753,
                 'F470N': 0.7815623252258791,
                 'F480M': 0.7770908734069811}
+
+## webbpsf version 1.4.0 with background aperture subtracted
+## Upated on 2024-10-20
+## This time I subtracted the background annlus energy
+## but multiplied this by Src Ap Area/ Background Ap Area
+## Just as I do with the aperture photometry
+
+apCorEstimate4 = {'F070W': 0.8880715109684638,
+                'F090W': 0.8825589469955019,
+                'F115W': 0.8739194696036208,
+                'F140M': 0.8673391875143327,
+                'F150W2': 0.8678734691680945,
+                'F150W': 0.8662068630225087,
+                'F162M': 0.8642904753842874,
+                'F164N': 0.8635024696230549,
+                'F182M': 0.864823719687327,
+                'F187N': 0.864807989552144,
+                'F200W': 0.8636993297401767,
+                'F210M': 0.8625964291597367,
+                'F212N': 0.8629914840235435,
+                'F250M': 0.8479509337390028,
+                'F277W': 0.8399959843716861,
+                'F300M': 0.8342709325075651,
+                'F322W2': 0.834461925302382,
+                'F323N': 0.8320306383409227,
+                'F335M': 0.8300134270388517,
+                'F356W': 0.8280217116675155,
+                'F360M': 0.826533188102749,
+                'F405N': 0.8236627359269715,
+                'F410M': 0.8230281657712811,
+                'F430M': 0.8199251322925067,
+                'F444W': 0.815369463263069,
+                'F460M': 0.8086396915988944,
+                'F466N': 0.8076163736109199,
+                'F470N': 0.8050807350721805,
+                'F480M': 0.7991006762193196}
 
 ap_px_to_use = {'F070W' : [10, 12, 20],
                 'F090W' : [10, 12, 20],
