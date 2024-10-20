@@ -260,6 +260,9 @@ class photObj(object):
                 if separation > 0.8 * u.arcsec:
                     phot_res = None
                 else:
+                    if self.strictDQ == True:
+                        image_data = self.strict_dq_Nan(image_data,HDUList['DQ'].data)
+                    
                     if (self.interpolate == True) | (self.interpolate == 'backOnly'):
                         image_data,error = self.do_interpolation(xc,yc,image_data,error)
                     if self.ROEBA == True:
@@ -267,8 +270,7 @@ class photObj(object):
                             raise Exception("Cannot do ROEBA w/out tshirt installed")
                         image_data = self.proc_ROEBA(image_data,error,head)
                     
-                    if self.strictDQ == True:
-                        image_data = self.strict_dq_Nan(image_data,HDUList['DQ'].data)
+
                     
                     phot_res = self.do_phot(xc,yc,image_data,head,error,
                                             fits_filename=fits_filename)
